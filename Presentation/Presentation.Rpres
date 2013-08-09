@@ -1,0 +1,301 @@
+MRMR - Multivariate Regression Models for Reserving
+========================================================
+author: Brian Fannin
+date: August 5, 2013
+
+Agenda
+========================================================
+0. Installation
+1. Introducing MRMR
+1. Data
+2. Visualization
+3. The linear modelling process
+4. Grouped data
+
+Installation
+========================================================
+Hopefully this won't take long! MRMR is not yet on CRAN. This means it needs to be sourced from GitHub. Hopefully you've already done that.
+If you haven't, and we all have a good internet connection, this will only take a moment.
+
+You may also need to install some support libraries: ggplot2, reshape2, plyr, lubridate, RColorBrewer
+```{r, echo=TRUE}
+# source("https://raw.github.com/PirateGrunt/MRMR/master/R/Startup.R")
+setwd("C:/Users/bfannin/Documents/GitHub/CLRS2013/")
+load(file = "MRMR mojo.RData")
+```
+Introducing MRMR
+========================================================
+
+MRMR was heavily influenced by the following:
+
+1. Andrew Gelman and Jennifer Hill, "Hierarchical whatnot"
+2. ggplot2 and Hadley Wickham
+3. Leigh Halliwell and Judge et al
+
+MRMR is an R package, with three S4 classes
+
+1. Triangle
+2. TriangleFit
+3. TriangleProjection
+
+Each class has methods which have a rough correspondence to standard statistical modelling functions. We'll talk about that more later. We'll start by exploring the triangle object, which houses our data.
+
+Data 
+========================================================
+A triangle object must possess the following data elements:
+
+1. Temporal dimensions for origin period, development lag and evaluation date as lubridate objects.
+2. Measures
+  a. Stochastic - Loss, claim, etc.
+  b. Static - Typically exposure variables
+3. One or more grouping elements
+
+A brief word about data
+========================================================
+We store data in a dataframe
+```{r, echo=TRUE, eval=FALSE}
+AccidentYear = c(2002, 2003, ...)
+Month = c(12, 12, ...)
+Reported = c(12811, 9651, ...)
+Paid = c(2318, 1743, ...)
+EP = c(61183, 69175, ...)
+
+df = data.frame(AccidentYear = AccidentYear
+                , Month = Month
+                , Reported = Reported
+                , Paid = Paid
+                , EP = EP)
+```
+Note that the data doesn't appear as a triangle. This shouldn't shock anyone.
+
+A few more brief words about data
+========================================================
+We need to augment the data in a few ways. We need to ensure that we have the following temporal dimensions:
+
+1. Origin period start and end
+2. Development lags
+3. Evaluation periods
+```{r, echo=TRUE, eval=FALSE}
+Friedland = newTriangle(OriginPeriods = AccidentYear
+                         , TriangleData = df
+                         , DevelopmentLags = Month
+                         , Cumulative = TRUE
+                         , Measures = c("Reported", "Paid", "EP"))
+```
+All of the temporal dimensions use lubridate objects. This ensures that any necessary data conversions have been carried out and that we have a standard, well-defined date arithmatic.
+
+And another word about data
+========================================================
+Finally, MRMR facilitates using one "triangle" to house multiple sets of data. The sets may correspond to line of business, geographic region, operating entity, etc.
+
+I swear this is the final word about data
+========================================================
+MRMR makes liberal use of the lubridate package. A discussion of that package is out of scope. Suffice it to say that lubridate is a detailed, robust way to manipulate dates. 
+
+OK, I lied. This might be the final word about data
+========================================================
+A triangle object must possess the following data elements:
+
+1. Temporal dimensions for origin period, development lag and evaluation date as lubridate objects.
+2. Cumulative and incremental measures (The user specifies what sort are in the data frame and MRMR will calcuate whatever's missing.)
+3. One or more grouping elements
+
+We'll take a look at a very simple example using data from the Friedland paper page 165.
+
+Visualization
+========================================================
+Now that we have a triangle, let's look at it. We should always inspect the data to spot any apparent trends.
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+plot(Friedland, Predictor = "DevInteger", Response = "CumulativePaid", Friedland)
+```
+
+Visualization
+========================================================
+The cumulative plot can often conceal interesting things. The incremental reveals some negative slopes. 
+```{r, fig.height=5,fig.width=8}
+plot(Friedland, Predictor = "DevInteger", Response = "IncrementalPaid")
+```
+
+Visualization
+========================================================
+Let's look at the incrementals, but using the evaluation date along the x-axis
+```{r, fig.height=5,fig.width=8}
+plot(Friedland, Predictor = "EvaluationDate", Response = "IncrementalPaid")
+```
+
+Visualization -> Model
+========================================================
+A visualization of data can often suggest a model.
+```{r, echo=TRUE, fig.height=5,fig.width=8}
+plot(Friedland, Predictor = "CumulativePaid", Response ="IncrementalPaid", Group = "DevInteger", Lines = FALSE)
+```
+
+Visualization -> Model
+========================================================
+Note that we're plotting all of the data, but we're grouping it according to the development period
+```{r, fig.height=5,fig.width=8}
+plot(Friedland, Predictor = "CumulativePaid", Response ="IncrementalPaid", Group = "DevInteger", Lines = FALSE, FitLines = TRUE)
+```
+
+Other predictors
+========================================================
+Multiplicative chain ladder assumes that loss predicts loss. The additive model assumes that exposure predicts loss. We can look at another potential model simply by switching the predictor in the call to plot.
+```{r, fig.height=5,fig.width=8}
+plot(Friedland, Predictor = "CumulativeEP", Response ="IncrementalPaid", Group = "DevInteger", Lines = FALSE, FitLines = TRUE)
+```
+
+Two things
+========================================================
+Before we can proceed, we need to review two things:
+
+1. Linear modelling
+2. Multivariate modelling
+  * More than one linear predictor
+  * Hierarchical structure of data
+  * Seemingly unrelated regression equations
+
+Linear modelling
+========================================================
+Let's take a step back and show some very basic linear modelling in R. We want to focus on two things:
+
+1. The structure of the equation
+2. The underlying assumptions
+
+Example - basic linear model
+========================================================
+```{r}
+set.seed(5678)
+x = 1:10
+y = 5 + 2 * x + rnorm(length(x), mean = 0, sd = 3)
+plot(x, y, pch = 19)
+fit = lm(y ~ 1 + x)
+y.hat = predict(fit)
+lines(x, y.hat)
+```
+
+The equation
+========================================================
+The equation is so simple, I barely want to mention it. However, like a 12-bar blues, it's so flexible and so core, let's take just a minute.
+
+$$latex y = x * b + e$$
+
+How then shall I begin? And how shall I presume?
+========================================================
+Key assumptions:
+
+1. Every observation y is a linear function of one or more predictors. 
+2. The variable y is perturbed by a random variable e, which is normally distributed with mean = 0 and standard deviation = s.
+3. The e's are not correlated
+
+Here that is in matrix form
+========================================================
+
+some latex equation
+
+
+And in R:
+========================================================
+```{r, echo=TRUE}
+df = model.matrix(fit)
+head(df)
+```
+
+Testing the assumptions
+========================================================
+Assumption | Test
+----- | -----
+Linear function | Model parameters may be tested using a t-test. In addition, we can choose from among a suite of models or various sets of predictors. This is analogous to using chi-square or some other criteria to select between various loss distributions.
+Functional form of e | Normal distribution may be tested using Kolmogorov-Smirnov and others. Also p-p plots. Homoskedasticiy may be tested using Breusch-Pagan
+Correlation among errors | Durbin-Watson tests for serial correlation among the errors. However, if we're grouping data this requires some care.
+
+MRMR vs lm
+========================================================
+Feature | lm, glm, lmer, etc (lms) | MRMR
+----- | ----- | -----
+Data | This typically means a data frame. | MRMR uses an S4 object. This is more or less a data frame with some constraints and metadata.
+Fit | The lms return an S3 object which contains information on the fit parameters. | MRMR stores fit information in an S4 object. MRMR stores some additional diagnostics and has code to support comparison of multiple models.
+Predict | The predict function returns result of applying the model against the sample set or new data. | Loss reserving is a bit weird. It's occasionally Markovian and requires model factors which- by definition- cannot have been calibrated against sample data. For those reasons, MRMR must be able to incorporate an assumption about tail factor and decide when to predict recursively.
+
+Hierarchical models
+========================================================
+We look at multivariate behavior in three ways
+
+1. More than one variable
+  1. Mixed method
+  2. Non-auto-recursive
+2. Categorized variables
+3. Seemingly unrelated regression equations
+
+More than one variable
+========================================================
+A basic linear model may be mapped in n-space. The two dimensional case is easiest to visualize. Anything higher than that requires us to project the marginal behavior when holding one of the variables constant. Bottom line: very difficult to visualize.
+
+```{r}
+x1 = 1:10
+x2 = 8:-1
+y = 5 + 2 * x1 + 18 * x2 + rnorm(length(x), mean = 0, sd = 3)
+plot(x1, y, pch = 19)
+plot(x2, y, pch = 19)
+fit = lm(y ~ 1 + x1 + x2)
+y.hat = predict(fit)
+plot(x1, y, pch = 19)
+lines(x1, y.hat)
+plot(x2, y, pch = 19)
+lines(x2, y.hat)
+```
+
+Categorical variables
+========================================================
+
+```{r}
+x = 1:10
+category = c(rep("A", 5), rep("B", 5))
+y = 5 + x * ifelse(category == "A", 2, 4) + rnorm(length(x), mean = 0, sd = 3)
+plot(x, y, pch = 19)
+fit = lm(y ~ 1 + x:category)
+y.hat = predict(fit)
+lines(x[1:5], y.hat[1:5], col="blue")
+lines(x[6:10], y.hat[6:10], col="green")
+```
+
+========================================================
+Note that even though we only have one predictor, we now have three columns in the design matrix- one for the intercept and one each for the categories. Note the number of zeros where we don't have a value for a particular category.
+
+```{r, echo=TRUE}
+df = model.matrix(fit)
+head(df)
+```
+========================================================
+A categorical model effectively fits one linear model for each category. Classic social science examples: gender, smoker, years of education, etc.
+
+The important point is that specifying a group improves the model, while leaving the basic (linear) relationship intact.
+
+We're not done with categorical models and will return to them soon.
+
+Back to MRMR
+========================================================
+That was a long walk, but very important. We're now ready to use MRMR to fit a model to some data. Remember what we must specify:
+
+1. The response (y)
+2. The predictor (x)
+3. The category
+
+Fit a triangle
+========================================================
+```{r}
+EPModel = newTriangleModel(Friedland, Response = "IncrementalPaid", Predictor = "CumulativeEP", Group = "DevInteger")
+summary(EPModel)
+```
+
+Note the similarity between fitting a model and plotting data
+========================================================
+```{r, echo=TRUE, eval=FALSE}
+plot(Friedland, Predictor = "CumulativeEP", Response ="IncrementalPaid", GroupColumn = "DevInteger", Lines = FALSE, FitLines = TRUE)
+EPModel = newTriangleModel(Friedland, Response = "IncrementalPaid", Predictor = "CumulativeEP", Group = "DevInteger")
+```
+
+Tail factor
+========================================================
+
+1. Use the tail factor calibrated to the sample data
+2. Extrapolate model factors

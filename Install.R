@@ -9,7 +9,7 @@
 #' localRoot = "C:/Users/bfannin/Documents/GitHub/CLRS2013"
   
 localRoot = "Enter a valid directory path here"
+
 local = TRUE
-installPackages = FALSE
 
 source("https://raw.github.com/PirateGrunt/CLRS2013/master/Startup.R")

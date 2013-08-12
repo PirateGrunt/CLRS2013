@@ -34,12 +34,32 @@ sourceFiles = c("TriangleOriginPeriod.R"
 invisible(lapply(paste0(sourceDirectory, sourceFiles), source))
 
 dataFiles = c("NAIC.rda", "Multiline.rda", "Friedland.rda")
+
+
+
 if (local) {
   invisible(lapply(paste0(localRoot, "/Data/",dataFiles), load))
 } else {
-  print("remote github install not supported")
+  mojo = paste0(dataURL, dataFiles, dataURLStem)
+  url = mojo[1]
+  sit = getURLContent(url, binary=TRUE, followlocation = TRUE, ssl.verifypeer = FALSE)
+  con = gzcon(rawConnection(sit, 'rb'))
+  load(con)
+  
+  url = mojo[2]
+  sit = getURLContent(url, binary=TRUE, followlocation = TRUE, ssl.verifypeer = FALSE)
+  con = gzcon(rawConnection(sit, 'rb'))
+  load(con)
+  
+  url = mojo[3]
+  sit = getURLContent(url, binary=TRUE, followlocation = TRUE, ssl.verifypeer = FALSE)
+  con = gzcon(rawConnection(sit, 'rb'))
+  load(con)
+  
+  close(con)
 }
 
+rm(mojo, con, url, sit, dataURL, dataURLStem, LoadDataFromGitHub)
 rm(supportLibraries, sourceFiles, sourceDirectory, dataFiles, local, localRoot, installPackages)
 
 # library(RCurl)
@@ -60,23 +80,3 @@ rm(supportLibraries, sourceFiles, sourceDirectory, dataFiles, local, localRoot, 
 # # 
 # # lapply(paste0(dataURL, dataFiles, dataURLStem), LoadDataFromGitHub)
 # # 
-# mojo = paste0(dataURL, dataFiles, dataURLStem)
-# 
-# url = mojo[1]
-# sit = getURLContent(url, binary=TRUE, followlocation = TRUE, ssl.verifypeer = FALSE)
-# con = gzcon(rawConnection(sit, 'rb'))
-# load(con)
-# 
-# url = mojo[2]
-# sit = getURLContent(url, binary=TRUE, followlocation = TRUE, ssl.verifypeer = FALSE)
-# con = gzcon(rawConnection(sit, 'rb'))
-# load(con)
-# 
-# url = mojo[3]
-# sit = getURLContent(url, binary=TRUE, followlocation = TRUE, ssl.verifypeer = FALSE)
-# con = gzcon(rawConnection(sit, 'rb'))
-# load(con)
-# 
-# close(con)
-# 
-# rm(mojo, con, url, sit, dataURL, dataURLStem, LoadDataFromGitHub)

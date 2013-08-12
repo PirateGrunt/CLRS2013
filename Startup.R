@@ -35,8 +35,6 @@ invisible(lapply(paste0(sourceDirectory, sourceFiles), source))
 
 dataFiles = c("NAIC.rda", "Multiline.rda", "Friedland.rda")
 
-
-
 if (local) {
   invisible(lapply(paste0(localRoot, "/Data/",dataFiles), load))
 } else {
@@ -57,9 +55,9 @@ if (local) {
   load(con)
   
   close(con)
+  rm(mojo, con, url, sit, dataURL)
 }
 
-rm(mojo, con, url, sit, dataURL, dataURLStem, LoadDataFromGitHub)
 rm(supportLibraries, sourceFiles, sourceDirectory, dataFiles, local, localRoot, installPackages)
 
 # library(RCurl)

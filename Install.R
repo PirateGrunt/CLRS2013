@@ -10,6 +10,8 @@
   
 localRoot = "Enter a valid directory path here"
 
-local = TRUE
+local = FALSE
+
+installPackages = FALSE
 
 source("https://raw.github.com/PirateGrunt/CLRS2013/master/Startup.R")

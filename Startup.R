@@ -33,26 +33,26 @@ sourceFiles = c("TriangleOriginPeriod.R"
 
 invisible(lapply(paste0(sourceDirectory, sourceFiles), source))
 
-dataFiles = c("NAIC.rda", "Multiline.rda", "Friedland.rda")
+dataFiles = c("Friedland.rda", "NAIC.rda", "Multiline.rda")
 
 if (local) {
-  invisible(lapply(paste0(localRoot, "/Data/",dataFiles), load))
+  invisible(lapply(paste0(localRoot, "/Data/",dataFiles), load, envir=.GlobalEnv))
 } else {
   mojo = paste0(dataURL, dataFiles, dataURLStem)
   url = mojo[1]
   sit = getURLContent(url, binary=TRUE, followlocation = TRUE, ssl.verifypeer = FALSE)
   con = gzcon(rawConnection(sit, 'rb'))
-  load(con)
+  load(con, envir=.GlobalEnv)
   
   url = mojo[2]
   sit = getURLContent(url, binary=TRUE, followlocation = TRUE, ssl.verifypeer = FALSE)
   con = gzcon(rawConnection(sit, 'rb'))
-  load(con)
+  load(con, envir=.GlobalEnv)
   
   url = mojo[3]
   sit = getURLContent(url, binary=TRUE, followlocation = TRUE, ssl.verifypeer = FALSE)
   con = gzcon(rawConnection(sit, 'rb'))
-  load(con)
+  load(con, envir=.GlobalEnv)
   
   close(con)
   rm(mojo, con, url, sit, dataURL)

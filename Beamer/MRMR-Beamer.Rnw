@@ -1,0 +1,875 @@
+\documentclass[xcolor=dvipsnames]{beamer}
+%%\usepackage[dvipsnames]{xcolor}
+
+\usefonttheme[onlymath]{serif}
+
+\setbeamercolor{title}{fg=black}
+\setbeamercolor{frametitle}{fg=black}
+
+\setbeamertemplate{itemize items}[circle] 
+\setbeamercolor{itemize item}{fg=black} 
+\begin{document}
+
+\title{R, Reserving, Linear Regression \& MRMR}
+\author{Brian A. Fannin}
+
+\maketitle
+
+% very important to use option [fragile] for frames containing code output!
+
+<<Options, echo=FALSE, results='hide', message=FALSE>>=
+options(width=40)
+@
+
+\begin{frame} {Agenda}
+  \begin{itemize}
+    \item Introducing MRMR
+    \item Data visualization 
+    \item Linear modeling
+    \item Fit diagnostics
+    \item Projection
+    \item Another view of regression
+    \item Further
+  \end{itemize}
+\end{frame}
+
+\begin{frame} {Introducing MRMR}
+  MRMR is another R package for use in analyzing reserves.
+  
+  MRMR was heavily influenced by the following:
+  \begin{itemize}
+    \item Andrew Gelman and Jennifer Hill, "Data Analysis Using Regression and Multilevel/Hierarchical Models"
+    \item ggplot2 and Hadley Wickham
+    \item Leigh Halliwell and Judge et al
+  \end{itemize}
+\end{frame}
+
+\begin{frame} {MRMR Structure}
+  MRMR supports three S4 classes: Triangle, TriangleModel and TriangleProjection. These have a rough correspondence to the behavior of functions lm, glm and lme4.
+  
+  \begin{tabular} { | l | l | l | }
+    \hline
+     & R & MRMR \\ \hline
+    Data storage & Data frame & Triangle \\ \hline
+    Model & Function lm (S3 object) & TriangleModel \\ \hline
+    Project & Function predict (vector) & TriangleProjection \\ 
+    \hline
+  \end{tabular}
+\end{frame}
+
+\begin{frame}[fragile]{Startup MRMR}
+<<Starup-MRMR, echo=TRUE, eval=FALSE, results='hide'>>=
+library(MRMR)
+?MRMR
+@
+
+<<Startup2-MRMR, echo=FALSE, results='hide', message=FALSE>>=
+library(MRMR)
+@
+\end{frame}
+
+\begin{frame}{Basic requirements}
+  A triangle object must possess the following data elements:
+  \begin{itemize}
+    \item Temporal dimensions for origin period, development lag and evaluation date. These are stored as lubridate objects.
+    \item Measures
+      \begin{itemize}
+        \item Stochastic - Loss, claim, etc. These are time series variables and candidates for prediction. MRMR will adjust these so that incremental, cumulative and prior cumulative columns are formed.
+        \item Static - Typically exposure variables. These will not be adjusted. These are very good candidates for predictors.
+      \end{itemize}
+    \item One or more grouping elements. This is currently not implemented, but is reserved for future use.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{A brief word about lubridate}
+lubridate is a package with many routines to aid in working with dates. 
+\end{frame}
+
+\begin{frame}[fragile]{lubridate examples}
+<<lubridateExample, echo=TRUE, tidy=TRUE>>=
+aDate = mdy("06-30-2012")
+day(aDate) = 6
+aDate + years(1)
+myPeriod = months(6)
+myPeriod / months(1)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Very quick lubridate exercise}
+How would you use lubridate to generate a sequence of the 15th of every month for the year of 2010?
+\end{frame}
+
+\begin{frame}[fragile]{Result}
+<<lubridateExercise, echo=TRUE, tidy=TRUE>>=
+aDate =mdy("1-15-2010")
+someDates = aDate + months(0:11)
+someDates
+@
+\end{frame}
+
+\begin{frame}[fragile]{Very basic reserving data}
+<<VeryBasicExample1, echo=TRUE, tidy=TRUE, results='hide'>>=
+AccidentYear = c(2002, 2002, 2002 
+               , 2003, 2003
+               , 2004)
+
+Month = c(12, 24, 36
+        , 12, 24
+        , 12)
+
+Paid = c(2318,  7932, 13822
+       , 1743,  6240
+       , 2221)
+
+EP = c( 61183,  61183,  61183
+     ,  69175,  69175
+     ,  99322)
+
+df = data.frame(AccidentYear = AccidentYear, Month = Month, Paid = Paid, EP = EP)
+head(df)
+@
+\end{frame}
+
+\begin{frame}[fragile] {Moving the data into a Triangle object}
+<<VeryBasicExample2, echo=TRUE, tidy=TRUE>>=
+myTriangle = newTriangle(TriangleData = df
+                         , OriginPeriods = AccidentYear
+                         , DevelopmentLags = Month
+                         , Cumulative = TRUE
+                         , StochasticMeasures = c("Paid")
+                         , StaticMeasures = c("EP")
+                         , Verbose = FALSE)
+@
+\end{frame}
+
+\begin{frame}[fragile]{What's in a Triangle object?}
+One may identify the components of a list object by using the name function. For an S4 object, use the function slotNames.
+<<VeryBasicExample3, echo=TRUE>>=
+slotNames(myTriangle)
+@
+To access a slot, use the commercial a operator
+\end{frame}
+
+\begin{frame}[fragile]{What sort of data frame have I created?}
+<<VeryBasicExample3-1, echo=TRUE, tidy=TRUE>>=
+names(myTriangle@TriangleData)
+@
+\end{frame}
+
+\begin{frame}[fragile]{A very basic plot}
+<<VeryBasicExample4, fig.width=8, fig.height=5, echo=TRUE, tidy=TRUE>>= 
+plotTriangle(myTriangle, Predictor = "DevInteger", Response = "CumulativePaid")
+@
+\end{frame}
+
+\begin{frame}[fragile]{Something more complex}
+<<Friedland1, fig.width=8, fig.height=5, echo=TRUE, tidy=TRUE>>=
+data(Friedland)
+plotTriangle(Friedland, Predictor = "DevInteger", Response = "CumulativePaid")
+@
+\end{frame}
+
+\begin{frame}[fragile]{Change the response term}
+<<Friedland2, fig.width=8, fig.height=5, echo=TRUE, tidy=TRUE>>=
+plotTriangle(Friedland, Predictor = "DevInteger", Response = "IncrementalPaid")
+@
+\end{frame}
+
+\begin{frame}[fragile]{Change the time axis}
+<<Friedland3, fig.width=8, fig.height=5, echo=TRUE>>=
+plotTriangle(Friedland, Predictor = "EvaluationDate", Response = "IncrementalPaid")
+@
+\end{frame}
+
+\begin{frame}[fragile]{Change the grouping dimension}
+<<FriedlandCL1, fig.width=8, fig.height=5, echo=TRUE>>=
+plotTriangle(Friedland, Predictor = "PriorPaid", Response ="IncrementalPaid", Group = "DevInteger", Lines = FALSE)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Add fit lines}
+<<Friedland5, fig.width=8, fig.height=5, echo=TRUE>>=
+plotTriangle(Friedland, Predictor = "PriorPaid", Response ="IncrementalPaid", Group = "DevInteger", Lines = FALSE, FitLines = TRUE)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Change the predictor variable}
+<<Friedland4, fig.width=8, fig.height=5, echo=TRUE>>=
+plotTriangle(Friedland, Response ="IncrementalPaid", Predictor = "EP", Group = "DevInteger", Lines = FALSE, FitLines=TRUE)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Fit a model}
+<<FitPaidAM, echo=TRUE>>=
+PaidAM = newTriangleModel(Triangle = Friedland, Response = "IncrementalPaid", Predictor = "EP", FitCategory = "DevInteger", Tail = 6)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Visualization is closely related to a model}
+<<echo=TRUE, eval=FALSE, results='hide'>>=
+plotTriangle(Friedland, Response ="IncrementalPaid", Predictor = "EP", Group = "DevInteger", Lines = FALSE, FitLines=TRUE)
+PaidAM = newTriangleModel(Friedland, Response ="IncrementalPaid", Predictor = "EP", FitCategory = "DevInteger", Tail = 6)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Linear regression in R}
+<<UnivariateData, echo=TRUE, results='hide'>>=
+set.seed(1234)
+N = 100
+e = rnorm(N, mean = 0, sd = 1)
+B0 = 5
+B1 = 1.5
+
+X1 = rep(seq(1,10),10)
+Y = B0 + B1 * X1 + e
+
+df = data.frame(Y=Y, X1=X1, e=e)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Fitting a linear model}
+<<UnivariateFit, echo=TRUE>>=
+myFit = lm(Y ~ X1, data=df)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Diagnostic output}
+<<UnivariateDiagnostics, echo=TRUE, size='tiny', tidy.opts=list(width=100)>>=
+summary(myFit)
+@
+\end{frame}
+
+\begin{frame}{Formulas in R}
+  \begin{itemize}
+    \item The '\textasciitilde' is typically read "is modeled as"
+    \item The '+' operator adds new predictor variables to the model
+    \item To use operators normally, enclose them in I()
+    \item An intercept is always assumed. To remove it, add '+ 0' or '- 1' to the formula
+    \item The ':' operator controls interactions between variables.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Some examples}
+<<FormulaExamples, echo=TRUE, eval=FALSE>>=
+#The 1 is not necessary
+lm(Y ~ 1 + X1, data=df)   
+
+#This is the same as above
+lm(Y ~ X1, data=df)    
+
+lm(Y ~ 0 + X1, data=df)   #No intercept
+
+lm(Y ~ X1 + X2, data=df)  #Two predictors
+
+#Two predictors and an interaction
+lm(Y ~ X1 + X2 + X1:X2, data=df)  
+
+#Use the operators normally
+lm(Y ~ I(X1 / X2), data=df)  
+@
+\end{frame}
+
+\begin{frame}[fragile]{Plot the data}
+<<UnivariatePlot, echo=TRUE, eval=FALSE>>=
+plot(df$X1, df$Y, pch=19)
+
+# To plot the fit line we can type either this:
+abline(myFit$coefficients[[1]], myFit$coefficients[[2]])
+
+# Or this:
+lines(df$X1, predict(myFit))
+@
+\end{frame}
+
+\begin{frame}
+<<UnivariatePlotEval, echo=FALSE, fig.width=8, fig.heigth=5>>=
+plot(df$X1, df$Y, pch=19)
+abline(myFit$coefficients[[1]], myFit$coefficients[[2]])
+@
+\end{frame}
+
+\begin{frame}[fragile]{More than one variable}
+<<BivariateData, echo=TRUE>>=
+B2 = -3.0
+df$X2 = rep(seq(-20, -11), 10)
+df$Y = with(df, B0 + B1 * X1 + B2 * X2)
+myFit2 = lm(Y ~ X1 + X2, data=df)
+@
+How would we plot this data?
+\end{frame}
+
+\begin{frame}[fragile]{A spurious variable}
+<<Spurious, echo=TRUE>>=
+df$spurious = runif(N, min=-5, max=5)
+myFit3 = lm(Y ~ X1 + spurious, data=df)
+@
+How would you determine whether or not to include the spurious predictor?
+\end{frame}
+
+\begin{frame}[fragile]{Linear regression assumptions}
+  \begin{enumerate}
+    \item Linear model with specified parameters
+      \begin{itemize}
+        \item Significance of individual model factors
+        \item Significance of model
+      \end{itemize}
+    \item Functional form of errors
+    \item Independence of errors
+      \begin{itemize}
+        \item (Serial) correlation of errors
+        \item Homoskedasticity
+      \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{Linear regression assumptions}
+  \begin{enumerate}
+    \item Linear model with specified parameters
+      \begin{itemize}
+        \item \color{blue} Significance of individual model factors
+        \item Significance of model
+      \end{itemize}
+    \item Functional form of errors
+    \item Independence of errors
+      \begin{itemize}
+        \item (Serial) correlation of errors
+        \item Homoskedasticity
+      \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{Significance of model factors}
+  Each model factor follows a t distribution, whose parameters depends on the underlying data. The "t value" reported by R is the ratio of the mean to the standard error. As a simple rule of thumb, any time a t-stat divided by its standard error is less than 2, one should reevaluate whether that factor improves the overall model. Put differently, such a low "t value" makes it difficult to reject the null hypothesis that the mean of the model factor is zero.
+\end{frame}
+
+\begin{frame}[fragile]{Significance of model factors (cont'd)}
+<<TtestMyFit, echo=TRUE, tidy.opts=list(width=80), tidy=TRUE, size='tiny'>>=
+dfCoef = summary(myFit)$coefficients
+dfCoef
+@
+\end{frame}
+
+\begin{frame}[fragile]{Significance of model factors (cont'd)}
+<<TtestSpurious, echo=TRUE, tidy.opts=list(width=80), tidy=TRUE, size='tiny'>>=
+spuriousFit = lm(Y ~ spurious, data=df)
+dfCoef = summary(spuriousFit)$coefficients
+dfCoef
+@
+\end{frame}
+
+\begin{frame}[fragile]{Two different reserving models}
+<<GetTwoModels, echo=TRUE>>=
+PaidCL = newTriangleModel(Friedland, Response ="IncrementalPaid", Predictor = "PriorPaid", FitCategory = "DevInteger", Tail = 6)
+PaidAM = newTriangleModel(Triangle = Friedland, Response = "IncrementalPaid", Predictor = "EP", FitCategory = "DevInteger", Tail = 6)
+@
+The first model corresponds to the traditional multiplicative chain ladder as applied to paid losses. The default is to have no weighting.
+\newline The second model is the additive model. This is described in Stanard and elsewhere.
+\end{frame}
+
+\begin{frame}[fragile]
+<<CLDiagnostics, echo=TRUE, size='tiny', tidy.opts=list(width=80), tidy=TRUE>>=
+summary(PaidCL@Fit)$coefficients[,1:2]
+@
+\end{frame}
+
+\begin{frame}[fragile]{Observe the model factors - Chain Ladder}
+<<PlotModelFactorsCL, fig.width=8, fig.height=5, echo=TRUE>>=
+PlotModelFactors(PaidCL)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Observe the model factors - Additive}
+<<PlotModelFactorsAM, fig.width=8, fig.height=5, echo=TRUE>>=
+PlotModelFactors(PaidAM)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Linear regression assumptions}
+  \begin{enumerate}
+    \item Linear model with specified parameters
+      \begin{itemize}
+        \item Significance of individual model factors
+        \item \color{blue} Significance of model
+      \end{itemize}
+    \item Functional form of errors
+    \item Independence of errors
+      \begin{itemize}
+        \item (Serial) correlation of errors
+        \item Homoskedasticity
+      \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{Significance of model}
+  Several metrics
+  \begin{enumerate}
+    \item R-squared
+    \item F-statistic
+    \item AIC
+    \item Penalized measures
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{Diagnostics}
+<<UnivariateDiagnostics2, echo=TRUE>>=
+summary(myFit)$r.squared
+summary(myFit)$fstatistic
+@
+Be careful of both of these statistics. Always visualize your data!
+\end{frame}
+
+\begin{frame}[fragile]{The F stat distribution looks good}
+<<PaidCLGoF, echo=TRUE, fig.height=5, fig.width=8>>=
+PlotModelGoF(PaidAM)
+@
+\end{frame}
+
+\begin{frame}[fragile]{But always observe the residual plots!}
+<<ResidualPlotsAM, fig.width=8, fig.height=5, echo=TRUE>>=
+PlotResiduals(PaidAM)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Your turn}
+<<>>=
+head(df)
+@
+Fit a linear model with and without X1 and X2. Which model fits better? How would you determine whether to include the spurious parameter?
+\end{frame}
+
+\begin{frame}[fragile]{Linear regression assumptions}
+  \begin{enumerate}
+    \item Linear model with specified parameters
+      \begin{itemize}
+        \item Significance of individual model factors
+        \item Significance of model
+      \end{itemize}
+    \item \color{blue} Functional form of errors
+    \item \color{black} Independence of errors
+      \begin{itemize}
+        \item (Serial) correlation of errors
+        \item Homoskedasticity
+      \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{Test for normalcy}
+<<ShapiroWilkOutput, echo=TRUE>>=
+shapiro.test(e)
+@
+<<ShapiroWilkPlot, echo=TRUE, eval=FALSE>>=
+qqnorm(e)
+qqline(e)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<ShapiroWilkPlot2, echo=FALSE, fig.width=8, fig.height=5>>=
+qqnorm(e)
+qqline(e)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Linear regression assumptions}
+  \begin{enumerate}
+    \item Linear model with specified parameters
+      \begin{itemize}
+        \item Significance of individual model factors
+        \item Significance of model
+      \end{itemize}
+    \item Functional form of errors
+    \item Independence of errors
+      \begin{itemize}
+        \item \color{blue} (Serial) correlation of errors
+        \item \color{black} Homoskedasticity
+      \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{Error correlation}
+<<SerialCorrelationPlot, echo=TRUE, fig.width=8, fig.height=5>>=
+lstFitResults = plotSerialCorrelation(PaidAM)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Error summary}
+<<SerialCorrelationSummary, echo=TRUE, size='tiny'>>=
+summary(lstFitResults$fit)$coefficients
+@
+\end{frame}
+
+\begin{frame}[fragile]{Introduce correlation}
+<<>>=
+df = Friedland@TriangleData
+cy = (year(df$EvaluationDate) == 2008)
+df$IncrementalPaid[cy] = df$IncrementalPaid[cy] * (2/3)
+
+myTriangle = newTriangle(df, OriginPeriods = OriginPeriod, DevelopmentLags = DevelopmentLag
+                         , StaticMeasures = "EP"
+                         , StochasticMeasures = "IncrementalPaid"
+                         , Cumulative = FALSE)
+
+myModel = newTriangleModel(myTriangle, "IncrementalPaid", "EP", "DevInteger")
+@
+\end{frame}
+
+\begin{frame}[fragile]{Error summary}
+<<SerialCorrelationSummary2, echo=TRUE, size='tiny'>>=
+lstResult = FitSerialCorrelation(myModel)
+summary(lstResult$fit)$coefficients
+@
+\end{frame}
+
+\begin{frame}[fragile]{Linear regression assumptions}
+  \begin{enumerate}
+    \item Linear model with specified parameters
+      \begin{itemize}
+        \item Significance of individual model factors
+        \item Significance of model
+      \end{itemize}
+    \item Functional form of errors
+    \item Independence of errors
+      \begin{itemize}
+        \item (Serial) correlation of errors
+        \item \color{blue} Homoskedasticity
+      \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{Breusch-Pagan}
+Heteroskedasticity is most often detected by observing the residuals. Adjusting the weights of the regression is an implicit assumption about the variance of the response variable. Changing the alpha parameter allows one to adjust for presumed heteroskedasticity. Read papers by Dan Murphy (or just ask him, he's probably standing somewhere close by) to learn more.
+\newline There is a formal test from Breusch and Pagan, which is available from the lmtest package.
+\end{frame}
+
+\begin{frame}[fragile]
+<<BreuschPagan1, echo=TRUE>>=
+set.seed(1234)
+N = 100
+e = rnorm(N, mean = 0, sd = 1)
+B1 = 1.5
+X1 = rep(seq(1,10),10)
+Y = B1 * X1 + sqrt(X1) * e
+
+bpFit = lm(Y ~ 0 + X1)
+bptest(bpFit)
+coef(bpFit)
+@
+<<echo=TRUE, eval=FALSE>>=
+plot(X1, residuals(bpFit), pch=19)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<BrueschPaganPlot, echo=FALSE>>=
+plot(X1, residuals(bpFit), pch=19)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<AlphaPlot, echo=TRUE>>=
+alpha = seq(-10, 10,by=.05)
+slope = sapply(alpha, function(x){
+  w = X1 ^ x
+  fit = lm(Y ~ 0 + X1, weight = w)
+  coef(fit)
+})
+max(Y / X1)
+min(Y / X1)
+max(slope)
+min(slope)
+@
+<<echo=TRUE, eval=FALSE>>=
+plot(alpha, slope, pch = 19)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<echo=FALSE, eval=TRUE>>=
+plot(alpha, slope, pch = 19)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<echo=TRUE, eval=FALSE>>=
+plot(X1, Y, pch=19)
+abline(0, min(slope), col="blue")
+abline(0, max(slope), col="blue")
+abline(0, B1, col="red")
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<echo=FALSE, eval=TRUE>>=
+plot(X1, Y, pch=19)
+abline(0, min(slope), col="blue")
+abline(0, max(slope), col="blue")
+abline(0, B1, col="red")
+@
+\end{frame}
+
+\begin{frame}[fragile]{Heteroskedasticity is controlled through the alpha parameter}
+<<MRMRAlpha, echo=TRUE, eval=FALSE>>=
+PaidAM0 = newTriangleModel(Friedland, Response = "IncrementalPaid", Predictor = "EP", FitCategory="DevInteger", Tail=6, Alpha=1)
+PaidAM0 = newTriangleModel(Friedland, Response = "IncrementalPaid", Predictor = "EP", FitCategory="DevInteger", Tail=6, Alpha=2)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Diagnostics pitfalls}
+Following is an example, created by Francis Anscombe, of the difficulty in interpreting diagnostics
+<<AnscombeData, echo=FALSE>>=
+x1 = c(10.0, 8.00, 13.00, 9.00, 11.00, 14.00, 6.00, 4.00, 12.00, 7.00, 5.00)
+x3 = x2 = x1
+x4 = c(8.00, 8.00, 8.00, 8.00, 8.00, 8.00, 8.00, 19.00, 8.00, 8.00, 8.00)
+y1 = c(8.04, 6.95,  7.58, 8.81,  8.33,  9.96, 7.24, 4.26, 10.84, 4.82, 5.68)
+y2 = c(9.14, 8.14,  8.74, 8.77,  9.26,  8.10, 6.13, 3.10,  9.13, 7.26, 4.74)
+y3 = c(7.46, 6.77, 12.74, 7.11, 7.81, 8.84, 6.08, 5.39, 8.15, 6.42, 5.73)
+y4 = c(6.58, 5.76, 7.71, 8.84, 8.47, 7.04, 5.25, 12.50, 5.56, 7.91, 6.89)
+@
+<<AnscombeView, echo=FALSE>>=
+View(data.frame(x1 = x1, y1 = y1, x2=x2, y2=y2, x3=x3, y3=y3, x4=x4, y4=y4))
+@
+\end{frame}
+
+\begin{frame}[fragile]{Anscombe pt.2}
+<<AnscombeFit, echo=TRUE>>=
+fit1 = lm(y1 ~ x1)
+fit2 = lm(y2 ~ x2)
+fit3 = lm(y3 ~ x3)
+fit4 = lm(y4 ~ x4)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<Anscombe2, echo=TRUE>>=
+summary(fit1)$r.squared
+summary(fit2)$r.squared
+summary(fit3)$r.squared
+summary(fit4)$r.squared
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<Anscombe3, echo=TRUE, eval=FALSE>>=
+op = par(mfrow = c(2,2))
+plot(y1 ~ x1, pch=19)
+abline(fit1$coefficients[[1]], fit1$coefficients[[2]])
+
+plot(y2 ~ x2, pch=19)
+abline(fit1$coefficients[[1]], fit1$coefficients[[2]])
+
+plot(y3 ~ x3, pch=19)
+abline(fit1$coefficients[[1]], fit1$coefficients[[2]])
+
+plot(y4 ~ x4, pch=19)
+abline(fit1$coefficients[[1]], fit1$coefficients[[2]])
+
+par(op)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<Anscombe4, echo=FALSE, fig.width=8, fig.height=7>>=
+op = par(mfrow = c(2,2))
+plot(y1 ~ x1, pch=19)
+abline(fit1$coefficients[[1]], fit1$coefficients[[2]])
+plot(y2 ~ x2, pch=19)
+abline(fit1$coefficients[[1]], fit1$coefficients[[2]])
+plot(y3 ~ x3, pch=19)
+abline(fit1$coefficients[[1]], fit1$coefficients[[2]])
+plot(y4 ~ x4, pch=19)
+abline(fit1$coefficients[[1]], fit1$coefficients[[2]])
+par(op)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Observe the residual plots}
+<<ResidualPlotsAM2, fig.width=8, fig.height=5, echo=TRUE>>=
+PlotResiduals(PaidAM)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Observe the residual plots}
+<<ResidualPlotsCL, fig.width=8, fig.height=5, echo=TRUE>>=
+PlotResiduals(PaidCL)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Projection to as-of date}
+Once a model has been checked and selected, projection of losses is trivial. MRMR will either project to a specific date or a specific development lag.
+<<>>=
+PaidAM_Projection = TriangleProjection(PaidAM, ProjectToDev = FALSE, AsOfDate = mdy("12/31/2010"))
+df = PaidAM_Projection@ProjectionData
+@
+\end{frame}
+
+\begin{frame}[fragile]{Projection to development age}
+<<>>=
+PaidAM_Projection = TriangleProjection(PaidAM, ProjectToDev = TRUE, MaxDev = 10)
+df = PaidAM_Projection@ProjectionData
+@
+\end{frame}
+
+\begin{frame}[fragile]{Another view of linear regression}
+The ordinarly least squares (OLS) regression procedure began by minimizing the sum of squared errors. Assuming homoskedastic normal error terms, this produces the same model factors as maximizing the likelihood function.
+\newline
+\newline
+This idea allows us to extend the model so that functional forms other than homoskedastic normal may be contemplated. Generalized linear models are one such example.
+\end{frame}
+
+\begin{frame}[fragile]{Another view of linear regression}
+<<AltOLS1, echo=TRUE>>=
+set.seed(1234)
+N = 100
+e = rnorm(N, mean = 0, sd = 1)
+ 
+lnLike = function(x, mu, sigma)
+{
+  n = length(x)
+  lnLike = -n / 2 * log(2*pi)
+  lnLike = lnLike - n/2 * log(sigma ^2)
+  lnLike = lnLike - 1/(2*sigma^2)*sum((x - mu)^2)
+  lnLike
+}
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<AltOLS2, echo=TRUE, fig.width=8, fig.height=5>>=
+testMu = seq(-0.5, 0.5, length.out=100)
+likelihood = sapply(testMu, lnLike, x = e, sigma = 1)
+testMu[likelihood == max(likelihood)]
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+<<, echo=TRUE, fig.width=8, fig.height=5>>=
+plot(likelihood ~ testMu, pch = 19)
+abline(v = 0)
+abline(v = testMu[likelihood == max(likelihood)])
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<AltOLS3, echo=TRUE, fig.width=8, fig.height=5>>=
+testSigma = seq(.5, 1.5, length.out=100)
+likelihood = sapply(testSigma, lnLike, x = e, mu = 0)
+testSigma[likelihood == max(likelihood)]
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<PlotSigma, echo=TRUE, fig.width=8, fig.height=5>>=
+plot(likelihood ~ testSigma, pch = 19)
+abline(v = 1)
+abline(v = testSigma[likelihood == max(likelihood)])
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<TwoDim, echo=TRUE, tidy=TRUE>>=
+params = expand.grid(mu = testMu, sigma = testSigma)
+params$Likelihood = mapply(lnLike, params$mu, params$sigma, MoreArgs = list(x = e))
+z = matrix(params$Likelihood, length(testMu), length(testSigma))
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<TwoDimPlotCode, results='hide', eval=FALSE, echo=TRUE>>=
+filled.contour(x=testMu, y=testSigma, z=z, color.palette = heat.colors, xlab = "mu", ylab = "sigma")
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<TwoDimPlotOutput, echo=FALSE, fig.width=8, fig.heigth=5, tidy=TRUE>>=
+filled.contour(x=testMu, y=testSigma, z=z, color.palette = heat.colors, xlab = "mu", ylab = "sigma")
+@
+\end{frame}
+
+\begin{frame}[fragile]{Optimize for both parameters}
+<<Optim, echo=TRUE>>=
+lnLike2 = function(x, par)
+{
+  mu = par[1]
+  sigma = par[2]
+  
+  lnLike(x, mu, sigma)
+}
+ 
+optimFit = optim(par = c(-1,4), fn = lnLike2, control = list(fnscale = -1), x = e)
+optimFit$par
+@
+\end{frame}
+
+\begin{frame}[fragile]{Add a constant term to the normal variable e}
+<<Optim2, echo=TRUE, results='hide'>>=
+B0 = 5
+Y = B0 + e
+@
+\end{frame}
+ 
+\begin{frame}[fragile]{This is equivalent to lm}
+<<Optim3, echo=TRUE>>=
+optimFit = optim(par = c(-1,4), fn = lnLike2, control = list(fnscale = -1), x = Y)
+optimFit$par[[1]]
+ 
+lmFit = lm(Y ~ 1)
+lmFit$coefficients[[1]]
+@
+\end{frame}
+
+\begin{frame}[fragile]{Now add a slope}
+<<Optim4, echo=TRUE, results='hide'>>=
+X = as.double(1:length(e))
+B1 = 1.5
+Y = B0 + B1 * X + e
+ 
+lnLike3 = function(par, Y, X)
+{
+  B0 = par[1]
+  B1 = par[2]
+  sigma = par[3]
+  
+  x = Y - B0 - B1 * X
+  mu = 0
+  
+  lnLike(x, mu, sigma) 
+}
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<Optim5, echo=TRUE>>=
+optimFit = optim(par = c(4, 1, 1), fn = lnLike3, control = list(fnscale = -1), Y = Y, X = X)
+optimFit$par[1:2]
+
+lmFit = lm(Y ~ 1 + X)
+lmFit$coefficients
+@
+\end{frame}
+
+\begin{frame}{Further}
+  \begin{itemize}
+    \item Coursera
+    \item Meetup.com
+    \item R-bloggers.com
+      \begin{itemize}
+        \item PirateGrunt.com
+        \item MagesBlog.com
+      \end{itemize}
+    \item Github
+    \item Books!
+    \begin{itemize}
+      \item Machine Learning for Hackers by Conway \& White
+      \item Software for Data Analysis by Chambers
+      \item Data Analysis Using Regression and Multilevel/Hierarchical Models by Gelman \& Hille
+      \item Introduction to the Theory and Practice of Econometrics by Judge, Griffiths \& Hill
+    \end{itemize}
+    \item Other languages
+    \begin{itemize}
+      \item Python
+      \item D3
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\end{document}

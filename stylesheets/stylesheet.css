@@ -158,8 +158,8 @@ a.button span {
 #download-mrmr span {
   background: transparent url(../images/tar-gz-icon.png) 12px 50% no-repeat;
 }
-#download-tar-gz span {
-  background: transparent url(../images/tar-gz-icon.png) 12px 50% no-repeat;
+#download-script span {
+  background: transparent url(https://github.com/PirateGrunt/CLRS2013/blob/master/images/R.png) 12px 50% no-repeat;
 }
 #view-on-github span {
   background: transparent url(../images/octocat-icon.png) 12px 50% no-repeat;

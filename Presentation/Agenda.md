@@ -1,40 +1,42 @@
-1. Structure of data
-  1. Move data into a data frame
-  1. Distinguish between stochastic and static predictors
-2. Visualize data
-    1. Plot predictors and responses - ggplot2
-    2. Two-dimensional plots are challenging
-    3. Group points
+1. Structure of data  
+  1.1 Move data into a data frame  
+  1.2 Distinguish between stochastic and static predictors  
+  1.2 lubridate
+2. Visualize data  
+  2.1 Plot predictors and responses - ggplot2
+  2.2 Two-dimensional plots are challenging
+  2.3 Group points
 2. lm
-    1. formula
-    2. weights - alpha
-    2. coefficients
+    a. formula
+    b. coefficients
 3. Fit diagnostics
-    1. F-stat
-    1. Durbin-watson and others
-    1. Breusch-Pagan
-    1. Cross validation - part 1
+    a. F-stat
+    c. Durbin-watson and others
+    d. Breusch-Pagan
+    e. Cross validation - part 1
 3. Plot diagnostics - 1
-    1. F-stat
-    1. Testing assumption testing
-    1. p-p plot
-    1. foursquare - heteroskedasticity
+    a. F-stat
+    d. Testing assumption testing
+    b. p-p plot
+    c. foursquare - heteroskedasticity
 3. Grouped regression
-    1. Use as.factor to group the predictor
-    1. Design matrix - try that in Excel
-    1. Collate the tail
+    a. Use as.factor to group the predictor
+    b. Design matrix - try that in Excel
+    c. Collate the tail
 4. Plot diagnostics - 2
-    1. Plot model factors
-    1. Change tail assumption and replot
-    1. Andrew Gelman doesn''t like to test significance of groups
+    a. Plot model factors
+    b. Change tail assumption and replot
+    c. Andrew Gelman doesn''t like to test significance of groups
 4. Brief aside about lmer
-    1. Tornado plot
-    1. lmer requires an intercept
-    1. Hierarchical regression
+    a. lmer requires an intercept
+    b. Hierarchical regression
 5. Projection
-    1. 
+    a. 
 6. Another view of regression
-    1. Normal case - use optim
-    1. Another form of error
+    a. Normal case - use optim
+    b. Another form of error
 7. glm
-    1. glm is another assumption about variance
+    a. overdispersed poisson
+8. Dependent stochastic predictors
+    a. Fit claim count
+    b. Fit paid

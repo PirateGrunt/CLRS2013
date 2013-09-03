@@ -1,0 +1,113 @@
+MRMR - Multivariate Regression Models for Reserving
+========================================================
+author: Brian Fannin
+date: August 5, 2013
+
+Agenda
+========================================================
+1. Structure of data
+  A. Move data into a data frame
+  B. Distinguish between stochastic and static predictors
+  
+2. Visualize data
+    a. Plot predictors and responses - ggplot2
+    b. Two-dimensional plots are challenging
+    c. Group points
+    
+2. lm
+    a. formula
+    b. coefficients
+    
+3. Fit diagnostics
+    a. F-stat
+    c. Durbin-watson and others
+    d. Breusch-Pagan
+    e. Cross validation - part 1
+Agenda
+======================================================
+
+3. Plot diagnostics - 1
+    a. F-stat
+    d. Testing assumption testing
+    b. p-p plot
+    c. foursquare - heteroskedasticity
+3. Grouped regression
+    a. Use as.factor to group the predictor
+    b. Design matrix - try that in Excel
+    c. Collate the tail
+4. Plot diagnostics - 2
+    a. Plot model factors
+    b. Change tail assumption and replot
+    c. Andrew Gelman doesn''t like to test significance of groups
+4. Brief aside about lmer
+    a. lmer requires an intercept
+    b. Hierarchical regression
+5. Projection
+    a. 
+6. Another view of regression
+    a. Normal case - use optim
+    b. Another form of error`
+    
+```{r}
+localRoot = "C:/Users/bfannin/Documents/GitHub/MRMR/"
+
+local = TRUE
+
+installPackages = FALSE
+
+source("https://raw.github.com/PirateGrunt/CLRS2013/master/Startup.R")
+```
+
+Plotting loss development data
+=======================================
+```{r, fig.height=5, fig.width=8}
+plot(Friedland, Predictor = "DevInteger", Response = "CumulativePaid")
+```
+
+Monkey
+=============================================
+```{r, echo=FALSE}
+plot(Friedland, Predictor = "DevInteger", Response = "IncrementalPaid")
+plot(Friedland, Predictor = "EvaluationDate", Response = "IncrementalPaid")
+
+plot(Friedland, Predictor = "CumulativePaid", Response ="IncrementalPaid", Group = "DevInteger", Lines = FALSE)
+plot(Friedland, Predictor = "CumulativePaid", Response ="IncrementalPaid", Group = "DevInteger", Lines = FALSE, FitLines = TRUE)
+plot(Friedland, Predictor = "EP", Response ="IncrementalPaid", Lines = FALSE)
+plot(Friedland, Predictor = "EP", Response ="IncrementalPaid", Group = "DevInteger", Lines = FALSE)
+plot(Friedland, Predictor = "EP", Response ="IncrementalPaid", Group = "DevInteger", Lines = FALSE, FitLines = TRUE)
+
+PaidAM1 = newTriangleModel(Triangle = Friedland, Response = "IncrementalPaid", Predictor = "EP", FitCategory = "DevInteger", Tail = 6)
+summary(PaidAM1@Fit)
+summary(PaidAM1)
+PlotModelFactors(PaidAM1)
+
+PaidAM2 = newTriangleModel(Triangle = Friedland, Response = "IncrementalPaid", Predictor = "EP", FitCategory = "DevInteger", Tail = 5)
+PlotModelFactors(PaidAM2)
+PlotModelGoF(PaidAM1)
+PlotModelGoF(PaidAM2)
+
+PaidCL1 = newTriangleModel(Triangle = Friedland, Response = "IncrementalPaid", Predictor = "PriorPaid", FitCategory = "DevInteger")
+PlotModelFactors(PaidCL1)
+
+PaidCL2 = newTriangleModel(Triangle = Friedland, Response = "IncrementalPaid", Predictor = "PriorPaid", FitCategory = "DevInteger", Tail = 5)
+PlotModelFactors(PaidCL2)
+
+PaidCL3 = newTriangleModel(Triangle = Friedland, Response = "IncrementalPaid", Predictor = "PriorPaid", FitCategory = "DevInteger", Tail = 4)
+PlotModelFactors(PaidCL3)
+
+PlotModelGoF(PaidCL1)
+PlotModelGoF(PaidCL2)
+PlotModelGoF(PaidCL3)
+
+# ReportedAM = newTriangleModel(Friedland, Response = "IncrementalReported", Predictor = "CumulativeEP", Group = "DevInteger")
+# ReportedCL = newTriangleModel(Friedland, Response = "IncrementalReported", Predictor = "PriorReported", Group = "DevInteger")
+
+PaidAM_Projection = TriangleProjection(PaidAM1, ProjectToDev = FALSE, AsOfDate = mdy("12/31/2010"))
+df = PaidAM_Projection@ProjectionData
+
+PaidAM_Projection = TriangleProjection(PaidAM1, ProjectToDev = TRUE, MaxDev = 10)
+df = PaidAM_Projection@ProjectionData
+
+PaidCL_Projection = TriangleProjection(PaidCL1, ProjectToDev = TRUE, MaxDev = 10)
+df = PaidCL_Projection@ProjectionData
+```

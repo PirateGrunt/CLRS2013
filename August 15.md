@@ -1,19 +1,31 @@
-1. Structure of data  
-  1.1 Move data into a data frame  
-  1.2 Distinguish between stochastic and static predictors  
-  1.2 lubridate
-2. Visualize data  
-  2.1 Plot predictors and responses - ggplot2
-  2.2 Two-dimensional plots are challenging
-  2.3 Group points
+MRMR - Multivariate Regression Models for Reserving
+========================================================
+author: Brian Fannin
+date: August 5, 2013
+
+Agenda
+========================================================
+1. Structure of data
+  A. Move data into a data frame
+  B. Distinguish between stochastic and static predictors
+  
+2. Visualize data
+    a. Plot predictors and responses - ggplot2
+    b. Two-dimensional plots are challenging
+    c. Group points
+    
 2. lm
     a. formula
     b. coefficients
+    
 3. Fit diagnostics
     a. F-stat
     c. Durbin-watson and others
     d. Breusch-Pagan
     e. Cross validation - part 1
+Agenda
+======================================================
+
 3. Plot diagnostics - 1
     a. F-stat
     d. Testing assumption testing
@@ -34,9 +46,16 @@
     a. 
 6. Another view of regression
     a. Normal case - use optim
-    b. Another form of error
-7. glm
-    a. overdispersed poisson
-8. Dependent stochastic predictors
-    a. Fit claim count
-    b. Fit paid
+    b. Another form of error`
+    
+
+
+
+
+
+
+
+```
+Error in file(filename, "r", encoding = encoding) : 
+  cannot open the connection
+```

@@ -27,10 +27,6 @@
 *.js
 *.css
 
-# images
-*.pdf
-*.png
-
 # LaTeX
 *.acn
 *.acr

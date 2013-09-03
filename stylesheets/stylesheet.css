@@ -152,17 +152,14 @@ a.button span {
   height: 23px;
 }
 
-#download-zip span {
-  background: transparent url(../images/zip-icon.png) 12px 50% no-repeat;
-}
 #download-mrmr span {
   background: transparent url(../images/tar-gz-icon.png) 12px 50% no-repeat;
 }
 #download-script span {
   background: transparent url(https://raw.github.com/PirateGrunt/CLRS2013/master/images/R.png) 12px 50% no-repeat;
 }
-#view-on-github span {
-  background: transparent url(../images/octocat-icon.png) 12px 50% no-repeat;
+#download-presentation span {
+  background: transparent url(https://raw.github.com/PirateGrunt/CLRS2013/master/images/slide.png) 12px 50% no-repeat;
 }
 #view-on-github {
   margin-right: 0;
